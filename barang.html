@@ -1,0 +1,187 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sistem Penyortiran & Tracking Barang</title>
+    
+    
+    <!-- Link untuk Menghubungkan Style Khusus Aplikasi -->   
+    <link rel="stylesheet" href="/SortirBarang/barang.css">
+
+    <!-- Library Barcode -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jsbarcode/3.11.5/JsBarcode.all.min.js"></script>
+    
+    <!-- Library Leaflet untuk Peta -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.css" />
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.js"></script>
+    
+</head>
+<body>
+    <!-- ========== HALAMAN LOGIN ========== -->
+    <div id="loginPage" class="login-container">
+        <div class="login-box">
+            <div class="logo">📦</div>
+            <h1>Sistem Tracking</h1>
+            <form id="loginForm">
+                <div class="form-group">
+                    <label>Username</label>
+                    <input type="text" id="loginUsername" required placeholder="Masukkan username">
+                </div>
+                <div class="form-group">
+                    <label>Password</label>
+                    <input type="password" id="loginPassword" required placeholder="Masukkan password">
+                </div>
+                <button type="submit" class="btn btn-primary" style="width: 100%;">Login</button>
+                <div style="margin-top: 15px; text-align: center; color: #666; font-size: 13px;">
+                    <small>Default: admin / admin123</small>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- ========== HALAMAN UTAMA (Setelah Login) ========== -->
+    <div id="mainApp" class="hidden">
+        <div class="navbar">
+            <h1>📦 Sistem Tracking Barang</h1>
+            <div class="nav-buttons">
+                <button class="nav-btn active" onclick="showSection('input')">Input Barang</button>
+                <button class="nav-btn" onclick="showSection('tracking')">Tracking</button>
+                <button class="nav-btn" onclick="showSection('list')">Daftar Barang</button>
+                <button class="logout-btn" onclick="logout()">Logout</button>
+            </div>
+        </div>
+
+        <div class="container">
+            <!-- ========== SECTION INPUT BARANG ========== -->
+            <div id="input" class="section active">
+                <h2>Input Barang Baru</h2>
+                <form id="itemForm">
+                    <div class="form-group">
+                        <label>Nama Barang *</label>
+                        <input type="text" id="itemName" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Deskripsi</label>
+                        <textarea id="itemDesc" rows="3"></textarea>
+                    </div>
+                    <div class="form-group">
+                        <label>Berat (kg)</label>
+                        <input type="number" id="itemWeight" step="0.1">
+                    </div>
+                    <div class="form-group">
+                        <label>Tujuan Pengiriman *</label>
+                        <input type="text" id="itemDestination" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Penerima</label>
+                        <input type="text" id="itemReceiver">
+                    </div>
+                    <button type="submit" class="btn btn-primary">Generate Barcode & Simpan</button>
+                </form>
+
+                <!-- Tampilan Barcode yang sudah di-generate -->
+                <div id="barcodeResult" class="barcode-display" style="display: none;">
+                    <h3>Barcode Berhasil Dibuat!</h3>
+                    <svg id="barcode"></svg>
+                    <p style="margin-top: 10px; font-weight: 600;">Kode: <span id="generatedCode"></span></p>
+                    <button class="btn btn-success" onclick="printBarcode()">🖨️ Print Barcode</button>
+                </div>
+            </div>
+
+            <!-- ========== SECTION TRACKING ========== -->
+            <div id="tracking" class="section">
+                <h2>Tracking Barang</h2>
+                <div class="search-box">
+                    <label>Masukkan Kode Barcode</label>
+                    <input type="text" id="trackingCode" placeholder="Contoh: BRG-001">
+                    <button class="btn btn-primary" onclick="trackItem()" style="margin-top: 10px;">Lacak Barang</button>
+                </div>
+
+                <!-- Hasil Tracking -->
+                <div id="trackingResult" style="display: none;">
+                    <div class="item-card">
+                        <div class="item-header">
+                            <div class="item-code" id="trackItemCode"></div>
+                            <div class="status-badge" id="trackItemStatus"></div>
+                        </div>
+                        <div class="item-details">
+                            <p><strong>Nama:</strong> <span id="trackItemName"></span></p>
+                            <p><strong>Tujuan:</strong> <span id="trackItemDest"></span></p>
+                            <p><strong>Penerima:</strong> <span id="trackItemReceiver"></span></p>
+                        </div>
+
+                        <!-- Peta Lokasi -->
+                        <div class="map-container">
+                            <div class="map-header">
+                                <h4>📍 Lokasi Barang</h4>
+                            </div>
+                            <div id="map"></div>
+                        </div>
+
+                        <!-- Timeline Riwayat -->
+                        <h4 style="margin-top: 20px; color: #667eea;">Riwayat Perjalanan</h4>
+                        <div class="timeline" id="trackTimeline"></div>
+                        
+                        <div class="item-actions">
+                            <button class="btn btn-primary btn-small" onclick="updateStatus()">Update Status</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ========== SECTION DAFTAR BARANG ========== -->
+            <div id="list" class="section">
+                <h2>Daftar Semua Barang</h2>
+                <div class="search-box">
+                    <input type="text" id="searchList" placeholder="Cari berdasarkan kode atau nama..." oninput="filterList()">
+                </div>
+                <div id="itemsList" class="items-grid"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ========== MODAL UPDATE STATUS ========== -->
+    <div id="statusModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>Update Status Pengiriman</h3>
+                <span class="close-modal" onclick="closeModal()">&times;</span>
+            </div>
+            <form id="statusForm">
+                <div class="form-group">
+                    <label>Status Baru</label>
+                    <select id="newStatus" required>
+                        <option value="warehouse">Di Gudang</option>
+                        <option value="transit">Dalam Perjalanan</option>
+                        <option value="delivered">Terkirim</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Lokasi Saat Ini *</label>
+                    <input type="text" id="currentLocation" required placeholder="Contoh: Jakarta Pusat">
+                </div>
+                <div class="form-group">
+                    <label>Latitude (Koordinat Peta)</label>
+                    <input type="number" step="any" id="locationLat" placeholder="Contoh: -6.200000">
+                    <small style="color: #666;">Opsional - Untuk menampilkan di peta</small>
+                </div>
+                <div class="form-group">
+                    <label>Longitude (Koordinat Peta)</label>
+                    <input type="number" step="any" id="locationLng" placeholder="Contoh: 106.816666">
+                    <small style="color: #666;">Opsional - Untuk menampilkan di peta</small>
+                </div>
+                <div class="form-group">
+                    <label>Catatan</label>
+                    <textarea id="statusNote" rows="3" placeholder="Tambahkan catatan jika perlu"></textarea>
+                </div>
+                <button type="submit" class="btn btn-primary">Simpan Update</button>
+            </form>
+        </div>
+    </div>
+    
+</body>
+
+        <!-- Link untuk Menghubungkan JavaScript Khusus Aplikasi -->
+    <script src="/SortirBarang/barang.js"></script>
+</html>
